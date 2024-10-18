@@ -5,9 +5,11 @@ set(CMAKE_CXX_STANDARD 23)
 
 add_executable(${PROJECT_NAME}
         main.cpp
-        gen_algo.tpp
+        gen_algo.cpp
         gen_algo.h
-        gen_structure.h
+        fitness_function_results_struct.h
+        my_array_encapsulation.tpp
+        my_array_encapsulation.h
 )
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
