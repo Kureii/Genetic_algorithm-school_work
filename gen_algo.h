@@ -8,7 +8,7 @@
 #include <random>
 
 #include "fitness_function_results_struct.h"
-
+#include "input_structure.h"
 #define MINIMUM_PARENT_COUNT 2
 
 class GeneticAlgorithm {
@@ -39,11 +39,7 @@ class GeneticAlgorithm {
    * @param fitness_function Function for optimization, input and output of
    * uin64_t.
    */
-  GeneticAlgorithm(uint64_t chromosome_size, double mutation_probability, double elitism_roulette_percent,
-      double elitism_selection_percent, double crossing_roulette_probability,
-      double first_parent_range, double second_parent_range,
-      std::uint64_t init_population_size, std::uint64_t generation_size,
-      std::uint32_t dimension_size, std::uint32_t stop_limit,
+  GeneticAlgorithm(const input_structure_t& input_structure, uint64_t chromosome_size,
       const FitnessFunction& fitness_function);
   void Compute();
   [[nodiscard]] std::vector<uint64_t> GetConvergence() const;

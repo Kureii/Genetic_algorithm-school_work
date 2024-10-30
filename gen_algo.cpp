@@ -12,23 +12,19 @@
 
 #include "my_array_encapsulation.h"
 
-GeneticAlgorithm::GeneticAlgorithm(uint64_t chromosome_size,double mutation_probability,
-    double elitism_roulette_percent, double elitism_selection_percent,
-    double crossing_roulette_probability, double first_parent_range,
-    double second_parent_range, std::uint64_t init_population_size,
-    std::uint64_t generation_size, std::uint32_t dimension_size,
-    std::uint32_t stop_limit, const FitnessFunction& fitness_function)
+GeneticAlgorithm::GeneticAlgorithm(const input_structure_t& input_structure, uint64_t chromosome_size,
+      const FitnessFunction& fitness_function)
     : chromosome_size_(chromosome_size),
-mutation_probability_(mutation_probability),
-      elitism_roulette_percent_(elitism_roulette_percent),
-      elitism_selection_percent_(elitism_selection_percent),
-      crossing_roulette_probability_(crossing_roulette_probability),
-      first_parent_range_(first_parent_range),
-      second_parent_range_(second_parent_range),
-      init_population_size_(init_population_size),
-      generation_size_(generation_size),
-      dimension_size_(dimension_size),
-      stop_limit_(stop_limit),
+mutation_probability_(input_structure.mutation_probability),
+      elitism_roulette_percent_(input_structure.elitism_random_select),
+      elitism_selection_percent_(input_structure.elitism_best_select),
+      crossing_roulette_probability_(input_structure.crossing_full_random_probability),
+      first_parent_range_(input_structure.first_parent_select_range),
+      second_parent_range_(input_structure.second_parent_select_range),
+      init_population_size_(input_structure.initial_population_size),
+      generation_size_(input_structure.population_size),
+      dimension_size_(input_structure.problem_dimension),
+      stop_limit_(input_structure.fitness_rating_count),
       fitness_function_(fitness_function) {
   if (chromosome_size_ == 0) {
     throw std::invalid_argument("Chromosome size cannot be zero");

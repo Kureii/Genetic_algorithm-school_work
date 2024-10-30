@@ -26,6 +26,10 @@ class myArrayEncapsulation {
   T* end();
   const T* begin() const;
   const T* end() const;
+  std::reverse_iterator<T*> rbegin();
+  std::reverse_iterator<T*> rend();
+  std::reverse_iterator<const T*> rbegin() const;
+  std::reverse_iterator<const T*> rend() const;
 
   const T& operator[](std::size_t index) const;
   T& operator[](std::size_t index);
