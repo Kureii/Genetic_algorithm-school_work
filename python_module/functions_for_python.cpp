@@ -154,3 +154,100 @@ output_structure_t GeneticAlgorithm_MaxZero(input_structure_t input_structure) {
   output.result = ga.GetResult();
   return output;
 }
+
+
+output_structure_t GeneticAlgorithm_Sphere(
+    input_structure_t input_structure, mapping_structure_t mapping_structure) {
+  std::size_t bits_per_variable = mapping_structure.bits_per_variable;
+  std::size_t total_bits =
+      bits_per_variable * input_structure.problem_dimension;
+  const std::size_t chromosome_size = (total_bits + 63) / 64;
+
+  auto sphere_fitness_function =
+      [input_structure, mapping_structure](
+          const ChromosomeArray<uint64_t>& chromosome) {
+        std::vector<double> variables = RealConvertor::ConvertChromosomeToReal(
+            chromosome, mapping_structure, input_structure.problem_dimension);
+        double sum_squares = 0.0;
+        for (double x : variables) {
+          sum_squares += x * x;
+        }
+        // Protože maximalizujeme, vracíme zápornou hodnotu
+        return -sum_squares;
+      };
+
+  auto ga = GeneticAlgorithm(
+      input_structure, chromosome_size, sphere_fitness_function);
+  ga.Compute();
+
+  output_structure_t output;
+  output.convergence = ga.GetConvergence();
+  output.result = ga.GetResult();
+
+  return output;
+}
+
+output_structure_t GeneticAlgorithm_Schwefel(
+    input_structure_t input_structure, mapping_structure_t mapping_structure) {
+  std::size_t bits_per_variable = mapping_structure.bits_per_variable;
+  std::size_t total_bits =
+      bits_per_variable * input_structure.problem_dimension;
+  const std::size_t chromosome_size = (total_bits + 63) / 64;
+
+  auto schwefel_fitness_function =
+      [input_structure, mapping_structure](
+          const ChromosomeArray<uint64_t>& chromosome) {
+        std::vector<double> variables = RealConvertor::ConvertChromosomeToReal(
+            chromosome, mapping_structure, input_structure.problem_dimension);
+        double sum = 0.0;
+        for (double x : variables) {
+          sum += x * sin(sqrt(fabs(x)));
+        }
+        double fitness = 418.9829 * input_structure.problem_dimension - sum;
+        // Protože maximalizujeme, vracíme fitness přímo
+        return fitness;
+      };
+
+  auto ga = GeneticAlgorithm(
+      input_structure, chromosome_size, schwefel_fitness_function);
+  ga.Compute();
+
+  output_structure_t output;
+  output.convergence = ga.GetConvergence();
+  output.result = ga.GetResult();
+
+  return output;
+}
+
+output_structure_t GeneticAlgorithm_Rosenbrock(
+    input_structure_t input_structure, mapping_structure_t mapping_structure) {
+  std::size_t bits_per_variable = mapping_structure.bits_per_variable;
+  std::size_t total_bits =
+      bits_per_variable * input_structure.problem_dimension;
+  const std::size_t chromosome_size = (total_bits + 63) / 64;
+
+  auto rosenbrock_fitness_function =
+      [input_structure, mapping_structure](
+          const ChromosomeArray<uint64_t>& chromosome) {
+        std::vector<double> variables = RealConvertor::ConvertChromosomeToReal(
+            chromosome, mapping_structure, input_structure.problem_dimension);
+        double sum = 0.0;
+        for (std::size_t i = 0; i < variables.size() - 1; ++i) {
+          double xi = variables[i];
+          double x_next = variables[i + 1];
+          sum += 100.0 * pow((x_next - xi * xi), 2) + pow((xi - 1), 2);
+        }
+        // Protože maximalizujeme, vracíme zápornou hodnotu
+        return -sum;
+      };
+
+  auto ga = GeneticAlgorithm(
+      input_structure, chromosome_size, rosenbrock_fitness_function);
+  ga.Compute();
+
+  output_structure_t output;
+  output.convergence = ga.GetConvergence();
+  output.result = ga.GetResult();
+
+  return output;
+}
