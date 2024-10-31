@@ -154,4 +154,3 @@ output_structure_t GeneticAlgorithm_MaxZero(input_structure_t input_structure) {
   output.result = ga.GetResult();
   return output;
 }
-
