@@ -8,23 +8,23 @@
 #include <cstdint>
 #include <optional>
 
-#include "my_array_encapsulation.h"
+#include "chromosome_array.h"
 
 struct FitnessFunctionResults {
   std::optional<uint64_t> fitness;
-  myArrayEncapsulation<uint64_t> input{};
+  ChromosomeArray<uint64_t> input{};
 
   FitnessFunctionResults() = default;
 
   explicit FitnessFunctionResults(
-      const myArrayEncapsulation<uint64_t>& inputArray, uint64_t fitnessValue)
+      const ChromosomeArray<uint64_t>& inputArray, uint64_t fitnessValue)
       : fitness(fitnessValue), input(inputArray) {}
 
   explicit FitnessFunctionResults(uint64_t fitnessValue)
       : fitness(fitnessValue) {}
 
   explicit FitnessFunctionResults(
-      const myArrayEncapsulation<uint64_t>& inputArray)
+      const ChromosomeArray<uint64_t>& inputArray)
       : input(inputArray) {
     fitness = std::nullopt;
   }

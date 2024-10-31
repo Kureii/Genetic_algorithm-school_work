@@ -4,24 +4,24 @@
 
 template <typename T>
   requires std::totally_ordered<T>
-myArrayEncapsulation<T>::myArrayEncapsulation() : size_(0), data_(nullptr) {}
+ChromosomeArray<T>::ChromosomeArray() : size_(0), data_(nullptr) {}
 
 template <typename T>
   requires std::totally_ordered<T>
-myArrayEncapsulation<T>::myArrayEncapsulation(uint64_t size) : size_(size) {
+ChromosomeArray<T>::ChromosomeArray(uint64_t size, uint64_t chromosome_length) : size_(size), chromosome_length_(chromosome_length) {
   data_ = new T[size_];
 }
 
 template <typename T>
   requires std::totally_ordered<T>
-myArrayEncapsulation<T>::~myArrayEncapsulation() {
+ChromosomeArray<T>::~ChromosomeArray() {
   delete[] data_;
 }
 
 template <typename T>
   requires std::totally_ordered<T>
-myArrayEncapsulation<T>::myArrayEncapsulation(
-    const myArrayEncapsulation<T>& other) {
+ChromosomeArray<T>::ChromosomeArray(
+    const ChromosomeArray<T>& other) {
   if (this != &other) {
     if (other.size_ > 0) {
       size_ = other.size_;
@@ -35,12 +35,13 @@ myArrayEncapsulation<T>::myArrayEncapsulation(
     }
   }
   size_ = other.size_;
+  chromosome_length_ = other.chromosome_length_;
 }
 
 template <typename T>
   requires std::totally_ordered<T>
-myArrayEncapsulation<T>& myArrayEncapsulation<T>::operator=(
-    const myArrayEncapsulation<T>& other) {
+ChromosomeArray<T>& ChromosomeArray<T>::operator=(
+    const ChromosomeArray<T>& other) {
   if (this != &other) {
     if (other.size_ > 0) {
       if (size_ != other.size_) {
@@ -56,24 +57,25 @@ myArrayEncapsulation<T>& myArrayEncapsulation<T>::operator=(
       data_ = nullptr;
     }
   }
+  chromosome_length_ = other.chromosome_length_;
   return *this;
 }
 
 template <typename T>
   requires std::totally_ordered<T>
-uint64_t myArrayEncapsulation<T>::size() const {
+uint64_t ChromosomeArray<T>::size() const {
   return size_;
 }
 
 template <typename T>
   requires std::totally_ordered<T>
-void myArrayEncapsulation<T>::reset() {
+void ChromosomeArray<T>::reset() {
   fill(T{});
 }
 
 template <typename T>
   requires std::totally_ordered<T>
-void myArrayEncapsulation<T>::fill(const T& value) {
+void ChromosomeArray<T>::fill(const T& value) {
   for (uint64_t i = 0; i < size_; i++) {
     data_[i] = value;
   }
@@ -81,60 +83,60 @@ void myArrayEncapsulation<T>::fill(const T& value) {
 
 template <typename T>
   requires std::totally_ordered<T>
-T* myArrayEncapsulation<T>::data() {
+T* ChromosomeArray<T>::data() {
   return data_;
 }
 
 template <typename T>
   requires std::totally_ordered<T>
-T* myArrayEncapsulation<T>::begin() {
+T* ChromosomeArray<T>::begin() {
   return data_;
 }
 template <typename T>
   requires std::totally_ordered<T>
-const T* ::myArrayEncapsulation<T>::begin() const {
+const T* ::ChromosomeArray<T>::begin() const {
   return data_;
 }
 
 template <typename T>
   requires std::totally_ordered<T>
-T* ::myArrayEncapsulation<T>::end() {
+T* ::ChromosomeArray<T>::end() {
   return data_ + size_;
 }
 
 template <typename T>
   requires std::totally_ordered<T>
-const T* myArrayEncapsulation<T>::end() const {
+const T* ChromosomeArray<T>::end() const {
   return data_ + size_;
 }
 
 template <typename T>
   requires std::totally_ordered<T>
-std::reverse_iterator<T*> myArrayEncapsulation<T>::rbegin() {
+std::reverse_iterator<T*> ChromosomeArray<T>::rbegin() {
   return std::reverse_iterator<T*>(end());
 }
 
 template <typename T>
   requires std::totally_ordered<T>
-std::reverse_iterator<T*> myArrayEncapsulation<T>::rend() {
+std::reverse_iterator<T*> ChromosomeArray<T>::rend() {
   return std::reverse_iterator<T*>(begin());
 }
 
 template <typename T>
   requires std::totally_ordered<T>
-std::reverse_iterator<const T*> myArrayEncapsulation<T>::rbegin() const {
+std::reverse_iterator<const T*> ChromosomeArray<T>::rbegin() const {
   return std::reverse_iterator<const T*>(end());
 }
 
 template <typename T>
   requires std::totally_ordered<T>
-std::reverse_iterator<const T*> myArrayEncapsulation<T>::rend() const {
+std::reverse_iterator<const T*> ChromosomeArray<T>::rend() const {
   return std::reverse_iterator<const T*>(begin());
 }
 
 template <typename T>
   requires std::totally_ordered<T>
-const T& myArrayEncapsulation<T>::operator[](std::size_t index) const {
+const T& ChromosomeArray<T>::operator[](std::size_t index) const {
   if (index >= size_) {
     throw std::out_of_range("Index out of bounds");
   }
@@ -143,9 +145,15 @@ const T& myArrayEncapsulation<T>::operator[](std::size_t index) const {
 
 template <typename T>
   requires std::totally_ordered<T>
-T& myArrayEncapsulation<T>::operator[](std::size_t index) {
+T& ChromosomeArray<T>::operator[](std::size_t index) {
   if (index >= size_) {
     throw std::out_of_range("Index out of bounds");
   }
   return data_[index];
+}
+
+template <typename T>
+  requires std::totally_ordered<T>
+uint64_t ChromosomeArray<T>::chromosome_length() const {
+  return chromosome_length_;
 }

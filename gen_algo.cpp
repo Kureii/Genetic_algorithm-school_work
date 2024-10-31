@@ -3,14 +3,15 @@
  */
 
 #include "gen_algo.h"
+
+#include <algorithm>
 #include <bitset>
 #include <iostream>
 #include <random>
-#include <algorithm>
 #include <ranges>
 #include <stdexcept>
 
-#include "my_array_encapsulation.h"
+#include "chromosome_array.h"
 
 GeneticAlgorithm::GeneticAlgorithm(const input_structure_t& input_structure, uint64_t chromosome_size,
       const FitnessFunction& fitness_function)
@@ -66,7 +67,7 @@ void GeneticAlgorithm::GenerateInitialPopulation() {
   std::vector<Chromosome> old_chromosomes;
   old_chromosomes.resize(init_population_size_);
   for (std::size_t i = 0; i < init_population_size_; i++) {
-    old_chromosomes[i] = myArrayEncapsulation<uint64_t>(chromosome_size_);
+    old_chromosomes[i] = ChromosomeArray<uint64_t>(chromosome_size_, dimension_size_);
   }
   std::uniform_int_distribution<uint64_t> distribution(0, UINT64_MAX);
 #ifdef DEBUG
@@ -98,9 +99,9 @@ void GeneticAlgorithm::GenerateInitialPopulation() {
     }
     std::cout << std::endl;
 #endif
-    if (!old_fitness_function_results_.empty()) {
-      old_fitness_function_results_.clear();
-    }
+  }
+  if (!old_fitness_function_results_.empty()) {
+    old_fitness_function_results_.clear();
   }
   for (uint64_t i = 0; i < old_chromosomes.size(); i++) {
     old_fitness_function_results_.emplace_back(
@@ -155,8 +156,8 @@ void GeneticAlgorithm::Crossing() {
 
   roulette_distribution_ = std::uniform_int_distribution<uint64_t>(0, new_fitness_function_results_.size()-1);
 
-  auto first_parent = Chromosome(chromosome_size_);
-  auto second_parent = Chromosome(chromosome_size_);
+  auto first_parent = Chromosome(chromosome_size_,dimension_size_);
+  auto second_parent = Chromosome(chromosome_size_,dimension_size_);
 
   std::ranges::sort(new_fitness_function_results_, std::greater<>());
 #ifdef DEBUG
@@ -323,8 +324,8 @@ void GeneticAlgorithm::Mutation(
 
 std::vector<FitnessFunctionResults> GeneticAlgorithm::MakeChildren(
     Chromosome& A, Chromosome& B) {
-  FitnessFunctionResults first_child {myArrayEncapsulation<uint64_t>(chromosome_size_)};
-  FitnessFunctionResults second_child {myArrayEncapsulation<uint64_t>(chromosome_size_)};
+  FitnessFunctionResults first_child {ChromosomeArray<uint64_t>(chromosome_size_, dimension_size_)};
+  FitnessFunctionResults second_child {ChromosomeArray<uint64_t>(chromosome_size_, dimension_size_)};
   std::uniform_int_distribution<uint64_t> mask_distribution(0, UINT64_MAX);
 #ifdef DEBUG
   uint8_t bit_len_normal, bit_len = 64;
@@ -343,12 +344,12 @@ std::vector<FitnessFunctionResults> GeneticAlgorithm::MakeChildren(
   }
 #endif
 
-  Chromosome first_parent_first_half(chromosome_size_);
-  Chromosome first_parent_second_half(chromosome_size_);
-  Chromosome second_parent_first_half(chromosome_size_);
-  Chromosome second_parent_second_half(chromosome_size_);
-  Chromosome mask(chromosome_size_);
-  Chromosome mask_inverted(chromosome_size_);
+  Chromosome first_parent_first_half(chromosome_size_, dimension_size_);
+  Chromosome first_parent_second_half(chromosome_size_, dimension_size_);
+  Chromosome second_parent_first_half(chromosome_size_, dimension_size_);
+  Chromosome second_parent_second_half(chromosome_size_, dimension_size_);
+  Chromosome mask(chromosome_size_, dimension_size_);
+  Chromosome mask_inverted(chromosome_size_, dimension_size_);
   for (std::size_t i = 0; i < chromosome_size_; ++i) {
     mask[i] = mask_distribution(generator_);
     mask_inverted[i] = ~mask[i];

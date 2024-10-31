@@ -9,11 +9,12 @@
 
 #include "fitness_function_results_struct.h"
 #include "input_structure.h"
+#include "chromosome_array.h"
 #define MINIMUM_PARENT_COUNT 2
 
 class GeneticAlgorithm {
  public:
-  using Chromosome = myArrayEncapsulation<uint64_t>;
+  using Chromosome = ChromosomeArray<uint64_t>;
   using FitnessFunction = std::function<uint64_t(const Chromosome&)>;
   /**
    * @param chromosome_size Size of chromosome

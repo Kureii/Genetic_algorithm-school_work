@@ -8,12 +8,12 @@
 
 template <typename T>
 requires std::totally_ordered<T>
-class myArrayEncapsulation {
+class ChromosomeArray {
  public:
-  myArrayEncapsulation();
-  explicit myArrayEncapsulation(uint64_t size);
-  myArrayEncapsulation(const myArrayEncapsulation<T> &other);
-  ~myArrayEncapsulation();
+  ChromosomeArray();
+  explicit ChromosomeArray(uint64_t size, uint64_t chromosome_length);
+  ChromosomeArray(const ChromosomeArray<T> &other);
+  ~ChromosomeArray();
 
   [[nodiscard]] uint64_t size() const;
 
@@ -33,11 +33,14 @@ class myArrayEncapsulation {
 
   const T& operator[](std::size_t index) const;
   T& operator[](std::size_t index);
-  myArrayEncapsulation<T>& operator=(const myArrayEncapsulation<T> &other);
+  ChromosomeArray<T>& operator=(const ChromosomeArray<T>& other);
 
+  [[nodiscard]] uint64_t chromosome_length() const;
  private:
   uint64_t size_;
+  uint64_t chromosome_length_;
+
   T* data_;
 };
 
-#include "my_array_encapsulation.tpp"
+#include "chromosome_array.tpp"
