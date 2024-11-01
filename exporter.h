@@ -48,4 +48,34 @@ class Exporter {
       const std::vector<output_structure>& dim_outputs,
       std::vector<double>& fitness_values);
 
+  static void ProcessDimensionsRealInputs(input_structure_t input_struct,
+    mapping_structure_t mapping_struct,
+    size_t iterations,
+    std::vector<std::vector<output_structure_t>>& output_structures_Sphere,
+    std::vector<std::vector<output_structure_t>>& output_structures_Schwefel,
+    std::vector<std::vector<output_structure_t>>& output_structures_Rosenbrock);
+
+  static void ExportRealInputs(const input_structure_t& input_struct,
+    const std::string& output_file, uint64_t iterations,
+    const std::vector<uint64_t>& dimensions);
+
+  static void WriteToFileRealInputs(const std::string& output_file,
+    const std::vector<uint64_t>& dimensions,
+    std::vector<std::vector<output_structure_t>>& output_structures_Sphere,
+    std::vector<std::vector<output_structure_t>>& output_structures_Schwefel,
+    std::vector<std::vector<output_structure_t>>& output_structures_Rosenbrock,
+    mapping_method_t mapping_method);
+
+static std::string CreateConvergencePlot(
+    const std::vector<double>& avg_convergence,
+    const std::string& fitness_name, const uint64_t dim, const std::string& color = "purple");
+
+  static std::string PrintMaxFitness(
+    const std::vector<output_structure_t>& dim_outputs,
+    const std::vector<double>& fitness_values);
+
+  static std::string PrintMinFitness(
+    const std::vector<output_structure_t>& dim_outputs,
+    const std::vector<double>& fitness_values);
 };
+

@@ -83,10 +83,7 @@ void GeneticAlgorithm::CheckInit() const {
 
 void GeneticAlgorithm::GenerateInitialPopulation() {
   old_fitness_function_results_.clear();
-  if (real_numbers_ && mapping_structure_.value().mapping_method ==
-                           mapping_method_t::BIT_AS_DOUBLE) {
-    GenerateInitialPopulationRealIEEE();
-  } else if (real_numbers_) {
+  if (real_numbers_) {
     GenerateInitialPopulationBit(dimension_size_, dimension_size_ * 64);
   } else {
     GenerateInitialPopulationBit(chromosome_size_, dimension_size_);
@@ -108,11 +105,10 @@ void GeneticAlgorithm::GenerateInitialPopulationBit(
       old_chromosomes[i][j] = distribution(generator_);
     }
     if (chromosome_size_ > 1) {
-      uint64_t iterator = dimension_size_ - (chromosome_size_ - 1) * 64;
+      uint64_t iterator = (all_bit_size - (chromosome_size_ - 1) * 64)-1 % 64+1;
       uint64_t mask = 0;
       for (std::size_t j = 0; j < iterator; ++j) {
-        mask <<= 1;
-        mask++;
+        mask = (mask << 1) | 1;
       }
       old_chromosomes[i][chromosome_size_ - 1] &= mask;
     } else {
@@ -154,10 +150,10 @@ void GeneticAlgorithm::Compute() {
   GenerateInitialPopulation();
 
   while (actual_fitness_count_ < stop_limit_) {
-    auto emergency_brake = !std::ranges::any_of(
-        old_fitness_function_results_, [](const auto& result) {
-          return std::holds_alternative<std::monostate>(result.fitness);
-        });
+    auto emergency_brake = !(std::ranges::any_of(
+        old_fitness_function_results_, [](const auto& old_fitness_function_results_) {
+          return std::holds_alternative<std::monostate>(old_fitness_function_results_.fitness);
+        }));
 
     if (emergency_brake) {
 #ifdef DEBUG
@@ -179,21 +175,23 @@ void GeneticAlgorithm::Compute() {
     }
     std::cout << std::endl;
 #endif
-  }
-  std::ranges::sort(old_fitness_function_results_, std::greater());
-  if (real_numbers_) {
-    if (mapping_structure_.value().mapping_method ==
-        mapping_method_t::BIT_AS_DOUBLE) {
-      CrossingReal();
-    } else {
+    std::ranges::sort(old_fitness_function_results_, std::greater());
+    if (real_numbers_) {
       CrossingBit(dimension_size_, dimension_size_ * 64);
+    } else {
+      CrossingBit(chromosome_size_, dimension_size_);
     }
-    convergence_.emplace_back(
-        old_fitness_function_results_[0].GetFitnessAsDouble());
-  } else {
-    CrossingBit(chromosome_size_, dimension_size_);
-    convergence_.emplace_back(
-        old_fitness_function_results_[0].GetFitnessAsUInt64());
+    uint64_t last_convergence;
+    if (convergence_.empty()) {
+      last_convergence = 0;
+    } else {
+      last_convergence = convergence_.back();
+    }
+    if (last_convergence < old_fitness_function_results_[0].GetFitnessAsUInt64()) {
+      convergence_.emplace_back(old_fitness_function_results_[0].GetFitnessAsUInt64());
+    } else {
+      convergence_.emplace_back(last_convergence);
+    }
   }
 }
 
@@ -280,13 +278,9 @@ void GeneticAlgorithm::Elitism() {
   std::ranges::sort(elit_selection_vector);
   convergence_.push_back(elit_selection_vector[elit_selection_vector.size() - 1]
                              .GetFitnessAsUInt64());
-  if (real_numbers_ && mapping_structure_.value().mapping_method == mapping_method_t::BIT_AS_DOUBLE) {
-    best_from_generation_double_ =
-        std::get<ChromosomeArray<double>>(elit_selection_vector[elit_selection_vector.size() - 1].input);
-  } else {
-    best_from_generation_ =
+      best_from_generation_ =
         std::get<ChromosomeArray<uint64_t>>(elit_selection_vector[elit_selection_vector.size() - 1].input);
-  }
+
   auto multiplier = std::min(generation_size_, init_population_size_);
   // elitismus selection
   uint64_t number_of_selections = elitism_selection_percent_ * multiplier;
@@ -338,7 +332,7 @@ void GeneticAlgorithm::ParentSelection(
          i < new_fitness_function_results_.size() - number_of_first_parent;
          ++i) {
       uint64_t iterator =
-          new_fitness_function_results_[i].GetFitnessAsUInt64() + 1;
+          new_fitness_function_results_.size() - number_of_first_parent - i;
       for (std::size_t j = 0; j < (iterator); ++j) {
         select_first_parent_vector.emplace_back(
             std::get<ChromosomeArray<uint64_t>>(new_fitness_function_results_[i].input));
@@ -350,7 +344,7 @@ void GeneticAlgorithm::ParentSelection(
          i < new_fitness_function_results_.size() - number_of_second_parent;
          ++i) {
       uint64_t iterator =
-          new_fitness_function_results_[i].GetFitnessAsUInt64() + 1;
+        new_fitness_function_results_.size() - number_of_second_parent-i;
       for (std::size_t j = 0; j < (iterator); ++j) {
         select_second_parent_vector.emplace_back(
             std::get<ChromosomeArray<uint64_t>>(new_fitness_function_results_[i].input));
@@ -430,12 +424,11 @@ void GeneticAlgorithm::Mutation(
     } else {
       std::get<ChromosomeArray<uint64_t>>(first_child.input)[part_position_distribution(generator_)] ^=
           1 << full_position_distribution(generator_);
-      uint64_t iterator = dimension_size_ - (chromosome_size_ - 1) * 64;
+      uint64_t iterator = chromosome_size_;
       for (std::size_t j = 0; j < iterator; ++j) {
-        mutate_mask <<= 1;
-        mutate_mask++;
+
+        std::get<ChromosomeArray<uint64_t>>(first_child.input)[j] ^= 1ULL << mutate_full_range_distribution_(generator_);
       }
-      std::get<ChromosomeArray<uint64_t>>(first_child.input)[chromosome_size_ - 1] ^= mutate_mask;
     }
   }
 
@@ -451,12 +444,10 @@ void GeneticAlgorithm::Mutation(
     } else {
       std::get<ChromosomeArray<uint64_t>>(second_child.input)[part_position_distribution(generator_)] ^=
           1 << full_position_distribution(generator_);
-      uint64_t iterator = dimension_size_ - (chromosome_size_ - 1) * 64;
+      uint64_t iterator = chromosome_size_;
       for (std::size_t j = 0; j < iterator; ++j) {
-        mutate_mask <<= 1;
-        mutate_mask++;
+        std::get<ChromosomeArray<uint64_t>>(second_child.input)[j] ^= 1ULL << mutate_full_range_distribution_(generator_);;
       }
-      std::get<ChromosomeArray<uint64_t>>(second_child.input)[chromosome_size_ - 1] ^= mutate_mask;
     }
   }
 }
@@ -499,17 +490,17 @@ std::vector<FitnessFunctionResults> GeneticAlgorithm::MakeChildren(
   uint8_t bit_len_sort = dimension_size_ - (chromosome_size_ - 1) * 64;
   std::cout << "Crossing:" << std::endl
             << "A: " << fitness_function_(A) << "; ";
-  for (int64_t j = static_cast<int64_t>(chromosome_size_) - 1; 0 <= j; --j) {
+  /*for (int64_t j = static_cast<int64_t>(chromosome_size_) - 1; 0 <= j; --j) {
     bit_len = j == 0 ? bit_len_sort : bit_len_normal;
     std::bitset<64> bits(A[j]);
     std::cout << bits.to_string().substr(64 - bit_len);
-  }
+  }*/
   std::cout << std::endl << " B: " << fitness_function_(B) << "; ";
-  for (int64_t j = chromosome_size_ - 1; 0 <= j; --j) {
+  /*for (int64_t j = chromosome_size_ - 1; 0 <= j; --j) {
     bit_len = j == 0 ? bit_len_sort : bit_len_normal;
     std::bitset<64> bits(B[j]);
     std::cout << bits.to_string().substr(64 - bit_len);
-  }
+  }*/
 #endif
 
   Chromosome first_parent_first_half(A.size(), A.chromosome_length());
@@ -535,6 +526,30 @@ std::vector<FitnessFunctionResults> GeneticAlgorithm::MakeChildren(
   if (real_numbers_) {
     switch (mapping_structure_.value().mapping_method) {
       using enum mapping_method_t;
+      case BIT_AS_DOUBLE: {
+        auto make_valid = [this](auto& child) {
+          std::ranges::for_each(std::get<ChromosomeArray<uint64_t>>(child), [this](auto& x) {
+            double value = std::bit_cast<double>(x);
+
+          if (std::isnan(value) || std::isinf(value)) {
+            x = std::bit_cast<uint64_t>(mapping_structure_.value().max_value);
+            return;
+          }
+
+          if (value > mapping_structure_.value().max_value) {
+            x = std::bit_cast<uint64_t>(mapping_structure_.value().max_value);
+          }
+          else if (value < mapping_structure_.value().min_value) {
+            x = std::bit_cast<uint64_t>(mapping_structure_.value().min_value);
+          }
+          });
+        };
+
+        make_valid(first_child.input);
+        make_valid(second_child.input);
+
+        break;
+      }
       case FIXED_POINT: {
         auto make_valid = [this](auto& input) {
           std::ranges::for_each(std::get<ChromosomeArray<uint64_t>>(input), [this](auto& x) {
@@ -574,7 +589,7 @@ std::vector<FitnessFunctionResults> GeneticAlgorithm::MakeChildren(
   }
 #ifdef DEBUG
 
-  std::cout << std::endl << "mask: ";
+  /*std::cout << std::endl << "mask: ";
   for (int j = chromosome_size_ - 1; 0 <= j; --j) {
     bit_len = j == 0 ? bit_len_sort : bit_len_normal;
     std::bitset<64> bits(mask[j]);
@@ -622,7 +637,7 @@ std::vector<FitnessFunctionResults> GeneticAlgorithm::MakeChildren(
     std::bitset<64> bits(std::get<ChromosomeArray<uint64_t>>(second_child.input)[j]);
     std::cout << bits.to_string().substr(64 - bit_len);
   }
-  std::cout << std::endl << "--------------------------------" << std::endl;
+  std::cout << std::endl << "--------------------------------" << std::endl;*/
 #endif
   Mutation(first_child, second_child);
 
@@ -713,8 +728,8 @@ std::vector<uint64_t> GeneticAlgorithm::GetConvergence() const {
   return convergence_;
 }
 
-std::vector<uint8_t> GeneticAlgorithm::GetResult() const {
-  std::vector<uint8_t> final_vector;
+std::vector<uint64_t> GeneticAlgorithm::GetResult() const {
+  std::vector<uint64_t> final_vector;
   std::ranges::for_each(best_from_generation_, [&](auto bit) {
     for (auto i = 0; i < 64; ++i) {
       final_vector.push_back((bit >> i) & 0b1);

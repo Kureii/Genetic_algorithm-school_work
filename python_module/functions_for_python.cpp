@@ -155,90 +155,78 @@ output_structure_t GeneticAlgorithm_MaxZero(input_structure_t input_structure) {
   return output;
 }
 
-
 output_structure_t GeneticAlgorithm_Sphere(
     input_structure_t input_structure, mapping_structure_t mapping_structure) {
-  std::size_t bits_per_variable = mapping_structure.bits_per_variable;
-  std::size_t total_bits =
-      bits_per_variable * input_structure.problem_dimension;
-  const std::size_t chromosome_size = (total_bits + 63) / 64;
+  const std::size_t chromosome_size = input_structure.problem_dimension;
+  const std::size_t inpu = 64 * input_structure.problem_dimension;
 
   auto sphere_fitness_function =
-      [](
-          const ChromosomeArray<uint64_t>& chromosome) {
+      [mapping_structure](const ChromosomeArray<uint64_t>& chromosome) {
+        uint64_t sum_squares = 0;
 
-        double sum_squares = 0.0;
-        auto mapping = chromosome.mapping_structure();
-        switch (chromosome.mapping_structure().mapping_method) {
+        switch (mapping_structure.mapping_method) {
           using enum mapping_method_t;
-          case BIT_AS_DOUBLE:
-              sum_squares += std::bit_cast<double>(chromosome[0]) * std::bit_cast<double>(chromosome[0]);
+          case BIT_AS_DOUBLE: {
+            for (const auto& gene : chromosome) {
+              uint64_t x = gene;
+              sum_squares += x * x;
+            }
             break;
+          }
           case FIXED_POINT: {
-            const auto scaling_factor =
-                static_cast<double>(1ULL << mapping.fractional_bits);
+            const uint64_t scaling_factor = 1ULL << mapping_structure.fractional_bits;
+            const uint64_t mask = ~0ULL;
 
-            const uint64_t mask = (mapping.bits_per_variable < 64) ? ((1ULL << mapping.bits_per_variable) - 1) : ~0ULL;
+            for (const auto& gene : chromosome) {
+              uint64_t bits_value = gene & mask;
+              int64_t int_value = static_cast<int64_t>(bits_value);
 
-            for (const auto& x_tmp : chromosome) {
-                uint64_t bits_value = x_tmp & mask;
+              if (bits_value & (1ULL << 63)) {
+                // Negative number, sign extension
+                int_value |= ~((1ULL << 64) - 1);
+              }
 
-                auto int_value = static_cast<int64_t>(bits_value);
-
-                if (mapping.bits_per_variable < 64) {
-                  if (uint64_t sign_bit =
-                          bits_value &
-                          (1ULL << (mapping.bits_per_variable - 1))) {
-                    // Záporné číslo, rozšíření znaménka
-                    uint64_t sign_extension =
-                        ~((1ULL << mapping.bits_per_variable) - 1);
-                    int_value |= sign_extension;
-                  }
-                }
-
-                const double x = static_cast<double>(int_value) / scaling_factor;
-
-                sum_squares += x * x;
+              int64_t x = int_value / scaling_factor;
+              sum_squares += static_cast<uint64_t>(x * x);
             }
             break;
           }
           case BINARY_CODED_DECIMAL: {
-            int num_digits = mapping.bits_per_variable / 4;
+            int num_digits = 16; // 64 bits / 4 bits per digit
 
-            for (const auto& x_tmp : chromosome) {
-                uint64_t bits_value = x_tmp;
+            for (const auto& gene : chromosome) {
+              uint64_t bits_value = gene;
+              uint64_t x = 0;
 
-                double x = 0.0;
-                for (int d = 0; d < num_digits; ++d) {
-                    uint64_t digit_bits = (bits_value >> (4 * d)) & 0xF;
-                    int digit = static_cast<int>(digit_bits);
-                    if (digit > 9) digit = 9; // Omezení na číslice 0-9
-                    x += digit * pow(10, num_digits - d - 1); // Nejvýznamnější číslice první
-                }
+              for (int d = 0; d < num_digits; ++d) {
+                uint64_t digit_bits = (bits_value >> (4 * d)) & 0xF;
+                int digit = static_cast<int>(digit_bits);
+                if (digit > 9) digit = 9; // Limit to digits 0-9
+                x += digit * static_cast<uint64_t>(pow(10, num_digits - d - 1));
+              }
 
-                sum_squares += x * x;
+              sum_squares += x * x;
             }
             break;
           }
           case MAPPED_RANGE: {
-            int bits_per_variable = mapping.bits_per_variable;
-            double min_value = mapping.min_value;
-            double max_value = mapping.max_value;
-            double range = max_value - min_value;
-            uint64_t max_int_value = (1ULL << bits_per_variable) - 1;
+              double min_value = mapping_structure.min_value;
+              double max_value = mapping_structure.max_value;
+              double range = max_value - min_value;
+              uint64_t max_int_value = ~0ULL;
 
-            for (const auto& x_tmp : chromosome) {
-                uint64_t bits_value = x_tmp & max_int_value;
-
+              for (const auto& gene : chromosome) {
+                uint64_t bits_value = gene;
                 double x = min_value + (static_cast<double>(bits_value) / max_int_value) * range;
-
                 sum_squares += x * x;
-            }
-            break;
+              }
+              break;
           }
         }
 
-        return -sum_squares;
+        // Since we are maximizing in the GA, invert the sum_squares
+        uint64_t fitness = std::numeric_limits<uint64_t>::max() - sum_squares;
+        return fitness;
       };
 
   auto ga = GeneticAlgorithm(
@@ -254,26 +242,83 @@ output_structure_t GeneticAlgorithm_Sphere(
 
 output_structure_t GeneticAlgorithm_Schwefel(
     input_structure_t input_structure, mapping_structure_t mapping_structure) {
-  std::size_t bits_per_variable = mapping_structure.bits_per_variable;
-  std::size_t total_bits =
-      bits_per_variable * input_structure.problem_dimension;
-  const std::size_t chromosome_size = (total_bits + 63) / 64;
+  const std::size_t chromosome_size = input_structure.problem_dimension;
 
   auto schwefel_fitness_function =
-      [input_structure, mapping_structure](
-          const ChromosomeArray<uint64_t>& chromosome) {
-        std::vector<double> variables = RealConvertor::ConvertChromosomeToReal(
-            chromosome, mapping_structure, input_structure.problem_dimension);
+      [input_structure, mapping_structure](const ChromosomeArray<uint64_t>& chromosome) {
         double sum = 0.0;
-        for (double x : variables) {
-          sum += x * sin(sqrt(fabs(x)));
+
+        switch (mapping_structure.mapping_method) {
+          using enum mapping_method_t;
+          case BIT_AS_DOUBLE: {
+            for (const auto& gene : chromosome) {
+              double x = std::bit_cast<double>(gene);
+              sum += x * sin(sqrt(fabs(x)));
+            }
+            break;
+          }
+          case FIXED_POINT: {
+            const auto scaling_factor =
+                static_cast<double>(1ULL << mapping_structure.fractional_bits);
+            const uint64_t mask = ~0ULL;
+
+            for (const auto& gene : chromosome) {
+              uint64_t bits_value = gene & mask;
+              int64_t int_value = static_cast<int64_t>(bits_value);
+
+              if (bits_value & (1ULL << 63)) {
+                // Negative number, sign extension
+                int_value |= ~((1ULL << 64) - 1);
+              }
+
+              double x = static_cast<double>(int_value) / scaling_factor;
+              sum += x * sin(sqrt(fabs(x)));
+            }
+            break;
+          }
+          case BINARY_CODED_DECIMAL: {
+            int num_digits = 16; // 64 bits / 4 bits per digit
+
+            for (const auto& gene : chromosome) {
+              uint64_t bits_value = gene;
+              double x = 0.0;
+
+              for (int d = 0; d < num_digits; ++d) {
+                uint64_t digit_bits = (bits_value >> (4 * d)) & 0xF;
+                int digit = static_cast<int>(digit_bits);
+                if (digit > 9) digit = 9; // Limit to digits 0-9
+                x += digit * pow(10, num_digits - d - 1);
+              }
+
+              sum += x * sin(sqrt(fabs(x)));
+            }
+            break;
+          }
+          case MAPPED_RANGE: {
+            double min_value = mapping_structure.min_value;
+            double max_value = mapping_structure.max_value;
+            double range = max_value - min_value;
+            uint64_t max_int_value = ~0ULL;
+
+            for (const auto& gene : chromosome) {
+              uint64_t bits_value = gene;
+              double x = min_value + (static_cast<double>(bits_value) / max_int_value) * range;
+              sum += x * sin(sqrt(fabs(x)));
+            }
+            break;
+          }
         }
-        double fitness = 418.9829 * input_structure.problem_dimension - sum;
-        return fitness;
+
+        double fitness_double = 418.9829 * input_structure.problem_dimension - sum;
+
+        // Scale the fitness value to preserve precision and convert to uint64_t
+        uint64_t fitness_uint64 = static_cast<uint64_t>(fitness_double * 1e6);
+
+        return fitness_uint64;
       };
 
   auto ga = GeneticAlgorithm(
-      input_structure, chromosome_size, schwefel_fitness_function);
+      input_structure, chromosome_size, schwefel_fitness_function, true);
   ga.Compute();
 
   output_structure_t output;
@@ -283,30 +328,89 @@ output_structure_t GeneticAlgorithm_Schwefel(
   return output;
 }
 
+
 output_structure_t GeneticAlgorithm_Rosenbrock(
     input_structure_t input_structure, mapping_structure_t mapping_structure) {
-  std::size_t bits_per_variable = mapping_structure.bits_per_variable;
-  std::size_t total_bits =
-      bits_per_variable * input_structure.problem_dimension;
-  const std::size_t chromosome_size = (total_bits + 63) / 64;
+  const std::size_t chromosome_size = input_structure.problem_dimension;
+  const std::size_t total_bits = 64 * input_structure.problem_dimension;
 
   auto rosenbrock_fitness_function =
-      [input_structure, mapping_structure](
-          const ChromosomeArray<uint64_t>& chromosome) {
-        std::vector<double> variables = RealConvertor::ConvertChromosomeToReal(
-            chromosome, mapping_structure, input_structure.problem_dimension);
-        double sum = 0.0;
-        for (std::size_t i = 0; i < variables.size() - 1; ++i) {
-          double xi = variables[i];
-          double x_next = variables[i + 1];
-          sum += 100.0 * pow((x_next - xi * xi), 2) + pow((xi - 1), 2);
+      [input_structure, mapping_structure](const ChromosomeArray<uint64_t>& chromosome) {
+        uint64_t sum = 0;
+        std::vector<int64_t> variables;
+
+        switch (mapping_structure.mapping_method) {
+          using enum mapping_method_t;
+          case BIT_AS_DOUBLE: {
+            for (const auto& gene : chromosome) {
+              int64_t x = static_cast<int64_t>(gene);
+              variables.push_back(x);
+            }
+            break;
+          }
+          case FIXED_POINT: {
+            const uint64_t scaling_factor = 1ULL << mapping_structure.fractional_bits;
+            const uint64_t mask = ~0ULL;
+
+            for (const auto& gene : chromosome) {
+              uint64_t bits_value = gene & mask;
+              int64_t int_value = static_cast<int64_t>(bits_value);
+
+              if (bits_value & (1ULL << 63)) {
+                // Negative number, sign extension
+                int_value |= ~((1ULL << 64) - 1);
+              }
+
+              int64_t x = int_value / scaling_factor;
+              variables.push_back(x);
+            }
+            break;
+          }
+          case BINARY_CODED_DECIMAL: {
+            int num_digits = 16; // 64 bits / 4 bits per digit
+
+            for (const auto& gene : chromosome) {
+              uint64_t bits_value = gene;
+              int64_t x = 0;
+
+              for (int d = 0; d < num_digits; ++d) {
+                uint64_t digit_bits = (bits_value >> (4 * d)) & 0xF;
+                int digit = static_cast<int>(digit_bits);
+                if (digit > 9) digit = 9; // Limit to digits 0-9
+                x += digit * static_cast<int64_t>(pow(10, num_digits - d - 1));
+              }
+
+              variables.push_back(x);
+            }
+            break;
+          }
+          case MAPPED_RANGE: {
+            double min_value = mapping_structure.min_value;
+            double max_value = mapping_structure.max_value;
+            double range = max_value - min_value;
+            uint64_t max_int_value = ~0ULL;
+
+            for (const auto& gene : chromosome) {
+              uint64_t bits_value = gene;
+              double x = min_value + (static_cast<double>(bits_value) / max_int_value) * range;
+              variables.push_back(x);
+            }
+            break;
+          }
         }
-        // Protože maximalizujeme, vracíme zápornou hodnotu
-        return -sum;
+
+        for (std::size_t i = 0; i < variables.size() - 1; ++i) {
+          int64_t xi = variables[i];
+          int64_t x_next = variables[i + 1];
+          sum += 100 * (x_next - xi * xi) * (x_next - xi * xi) + (xi - 1) * (xi - 1);
+        }
+
+        uint64_t fitness = std::numeric_limits<uint64_t>::max() - sum;
+        return fitness;
       };
 
   auto ga = GeneticAlgorithm(
-      input_structure, chromosome_size, rosenbrock_fitness_function);
+      input_structure, chromosome_size, rosenbrock_fitness_function, true);
   ga.Compute();
 
   output_structure_t output;

@@ -8,7 +8,7 @@
 #include <iostream>
 #include <vector>
 
-typedef struct output_structure {
+using output_structure_t = struct output_structure {
   std::vector<uint64_t> convergence;
-  std::vector<uint8_t> result;
-}output_structure_t;
+  std::vector<uint64_t> result;
+};

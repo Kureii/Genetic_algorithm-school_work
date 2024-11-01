@@ -28,7 +28,7 @@ class GeneticAlgorithm {
       bool real_numbers = false );
   void Compute();
   [[nodiscard]] std::vector<uint64_t> GetConvergence() const;
-  [[nodiscard]] std::vector<uint8_t> GetResult() const;
+  [[nodiscard]] std::vector<uint64_t> GetResult() const;
 
  private:
   void CheckInit() const;
@@ -73,6 +73,7 @@ class GeneticAlgorithm {
   std::vector<uint64_t> convergence_;
   std::mt19937_64 generator_;
   std::uniform_real_distribution<> zero_one_distribution_ = std::uniform_real_distribution(0.0, 1.0);
+  std::uniform_int_distribution<> mutate_full_range_distribution_ = std::uniform_int_distribution(0, 64);
   std::uniform_real_distribution<> ieee_distribution_;
   std::uniform_int_distribution<uint64_t> roulette_distribution_;
   FitnessFunction fitness_function_;
