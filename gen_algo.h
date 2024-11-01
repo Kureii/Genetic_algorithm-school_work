@@ -17,44 +17,39 @@ class GeneticAlgorithm {
   using Chromosome = ChromosomeArray<uint64_t>;
   using FitnessFunction = std::function<uint64_t(const Chromosome&)>;
   /**
+   * @param input_structure
    * @param chromosome_size Size of chromosome
-   * @param mutation_probability Probability of changing one bit in the child.
-   * The range is 0-1
-   * @param elitism_roulette_percent Percentage of random selection for elitism.
-   * The range is 0-1
-   * @param elitism_selection_percent Percentage of the best selection for
-   * elitism. The range is 0-1
-   * @param crossing_roulette_probability The probability that a parent will be
-   * chosen completely at random. The range is 0-1
-   * @param first_parent_range The percentage of the best result from which the
-   * first parent is randomly selected. If the value is too low (lower than two
-   * elements), the selected element is always in random range. Range 0-1.
-   * @param second_parent_range The percentage of the best result from which the
-   * second parent is randomly selected. If the value is too low (lower than two
-   * elements), the selected element is always in random range. Range 0-1.
-   * @param init_population_size First generation size.
-   * @param generation_size Second to last generation size.
-   * @param dimension_size Dimensionality of the problem.
-   * @param stop_limit Limit the number of times a fitness function can be
-   * performed.
    * @param fitness_function Function for optimization, input and output of
    * uin64_t.
+   * @param real_numbers
    */
   GeneticAlgorithm(const input_structure_t& input_structure, uint64_t chromosome_size,
-      const FitnessFunction& fitness_function);
+      FitnessFunction  fitness_function,
+      bool real_numbers = false );
   void Compute();
   [[nodiscard]] std::vector<uint64_t> GetConvergence() const;
   [[nodiscard]] std::vector<uint8_t> GetResult() const;
 
  private:
+  void CheckInit() const;
   void GenerateInitialPopulation();
-  void Crossing();
+  void GenerateInitialPopulationBit(uint64_t chromosome_array_size, uint64_t all_bit_size);
+  void GenerateInitialPopulationRealIEEE();
+  void CrossingBit(uint64_t chromosome_array_size, uint64_t all_bit_size);
+  bool IsFixedPointGenValid(uint64_t gen);
+  void MakeValidChromosomeBinaryCodedDecimal(Chromosome& A);
+  void CrossingReal();
   void Elitism();
   void ParentSelection(Chromosome& first_parent, Chromosome& second_parent);
+  std::pair<ChromosomeArray<double>, ChromosomeArray<double>>ParentSelectionReal();
   void Mutation (FitnessFunctionResults& first_child, FitnessFunctionResults& second_child);
+  void MutationReal(FitnessFunctionResults& first_child, FitnessFunctionResults& second_child);
+  void ComputeFitnessFunction();
   std::vector<FitnessFunctionResults> MakeChildren(Chromosome& A, Chromosome& B);
+  std::vector<FitnessFunctionResults> MakeChildrenReal();
 
 
+  bool real_numbers_;
 
   double mutation_probability_;
   double elitism_roulette_percent_;
@@ -69,6 +64,8 @@ class GeneticAlgorithm {
   uint64_t stop_limit_;
   uint64_t actual_fitness_count_ = 0;
   Chromosome best_from_generation_;
+  ChromosomeArray<double> best_from_generation_double_;
+  std::optional<mapping_structure_t> mapping_structure_;
 
   std::vector<FitnessFunctionResults> old_fitness_function_results_;
   std::vector<FitnessFunctionResults> new_fitness_function_results_;
@@ -76,6 +73,7 @@ class GeneticAlgorithm {
   std::vector<uint64_t> convergence_;
   std::mt19937_64 generator_;
   std::uniform_real_distribution<> zero_one_distribution_ = std::uniform_real_distribution(0.0, 1.0);
+  std::uniform_real_distribution<> ieee_distribution_;
   std::uniform_int_distribution<uint64_t> roulette_distribution_;
   FitnessFunction fitness_function_;
 };

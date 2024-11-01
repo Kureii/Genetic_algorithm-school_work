@@ -4,6 +4,9 @@
 
 #pragma once
 #include <cstdint>
+#include <optional>
+
+#include "real_structures.h"
 
 struct input_structure {
   double mutation_probability;
@@ -16,6 +19,8 @@ struct input_structure {
   uint64_t population_size;
   uint64_t problem_dimension;
   uint64_t fitness_rating_count;
+  std::optional<mapping_structure_t> mapping_structure;
+
 };
 
-using input_structure_t = struct input_structure;
+using input_structure_t = input_structure;

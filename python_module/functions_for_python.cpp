@@ -164,20 +164,85 @@ output_structure_t GeneticAlgorithm_Sphere(
   const std::size_t chromosome_size = (total_bits + 63) / 64;
 
   auto sphere_fitness_function =
-      [input_structure, mapping_structure](
+      [](
           const ChromosomeArray<uint64_t>& chromosome) {
-        std::vector<double> variables = RealConvertor::ConvertChromosomeToReal(
-            chromosome, mapping_structure, input_structure.problem_dimension);
+
         double sum_squares = 0.0;
-        for (double x : variables) {
-          sum_squares += x * x;
+        auto mapping = chromosome.mapping_structure();
+        switch (chromosome.mapping_structure().mapping_method) {
+          using enum mapping_method_t;
+          case BIT_AS_DOUBLE:
+              sum_squares += std::bit_cast<double>(chromosome[0]) * std::bit_cast<double>(chromosome[0]);
+            break;
+          case FIXED_POINT: {
+            const auto scaling_factor =
+                static_cast<double>(1ULL << mapping.fractional_bits);
+
+            const uint64_t mask = (mapping.bits_per_variable < 64) ? ((1ULL << mapping.bits_per_variable) - 1) : ~0ULL;
+
+            for (const auto& x_tmp : chromosome) {
+                uint64_t bits_value = x_tmp & mask;
+
+                auto int_value = static_cast<int64_t>(bits_value);
+
+                if (mapping.bits_per_variable < 64) {
+                  if (uint64_t sign_bit =
+                          bits_value &
+                          (1ULL << (mapping.bits_per_variable - 1))) {
+                    // Záporné číslo, rozšíření znaménka
+                    uint64_t sign_extension =
+                        ~((1ULL << mapping.bits_per_variable) - 1);
+                    int_value |= sign_extension;
+                  }
+                }
+
+                const double x = static_cast<double>(int_value) / scaling_factor;
+
+                sum_squares += x * x;
+            }
+            break;
+          }
+          case BINARY_CODED_DECIMAL: {
+            int num_digits = mapping.bits_per_variable / 4;
+
+            for (const auto& x_tmp : chromosome) {
+                uint64_t bits_value = x_tmp;
+
+                double x = 0.0;
+                for (int d = 0; d < num_digits; ++d) {
+                    uint64_t digit_bits = (bits_value >> (4 * d)) & 0xF;
+                    int digit = static_cast<int>(digit_bits);
+                    if (digit > 9) digit = 9; // Omezení na číslice 0-9
+                    x += digit * pow(10, num_digits - d - 1); // Nejvýznamnější číslice první
+                }
+
+                sum_squares += x * x;
+            }
+            break;
+          }
+          case MAPPED_RANGE: {
+            int bits_per_variable = mapping.bits_per_variable;
+            double min_value = mapping.min_value;
+            double max_value = mapping.max_value;
+            double range = max_value - min_value;
+            uint64_t max_int_value = (1ULL << bits_per_variable) - 1;
+
+            for (const auto& x_tmp : chromosome) {
+                uint64_t bits_value = x_tmp & max_int_value;
+
+                double x = min_value + (static_cast<double>(bits_value) / max_int_value) * range;
+
+                sum_squares += x * x;
+            }
+            break;
+          }
         }
-        // Protože maximalizujeme, vracíme zápornou hodnotu
+
         return -sum_squares;
       };
 
   auto ga = GeneticAlgorithm(
-      input_structure, chromosome_size, sphere_fitness_function);
+      input_structure, chromosome_size, sphere_fitness_function, true);
   ga.Compute();
 
   output_structure_t output;
@@ -204,7 +269,6 @@ output_structure_t GeneticAlgorithm_Schwefel(
           sum += x * sin(sqrt(fabs(x)));
         }
         double fitness = 418.9829 * input_structure.problem_dimension - sum;
-        // Protože maximalizujeme, vracíme fitness přímo
         return fitness;
       };
 

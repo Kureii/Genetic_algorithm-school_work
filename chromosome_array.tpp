@@ -2,15 +2,34 @@
 
 #include <stdexcept>
 
-template <typename T>
-  requires std::totally_ordered<T>
-ChromosomeArray<T>::ChromosomeArray() : size_(0), data_(nullptr) {}
+#include "real_structures.h"
 
 template <typename T>
   requires std::totally_ordered<T>
-ChromosomeArray<T>::ChromosomeArray(uint64_t size, uint64_t chromosome_length) : size_(size), chromosome_length_(chromosome_length) {
-  data_ = new T[size_];
-}
+ChromosomeArray<T>::ChromosomeArray()
+    : size_(0),
+      chromosome_length_(0),
+      mapping_structure_(mapping_structure_t{}),
+      data_(nullptr) {}
+
+template <typename T>
+  requires std::totally_ordered<T>
+ChromosomeArray<T>::ChromosomeArray(
+    const uint64_t size, const uint64_t chromosome_length)
+    : size_(size),
+      chromosome_length_(chromosome_length),
+      mapping_structure_(mapping_structure_t{}),
+      data_(new T[size_]) {}
+
+template <typename T>
+  requires std::totally_ordered<T>
+ChromosomeArray<T>::ChromosomeArray(const uint64_t size,
+    const uint64_t chromosome_length,
+    const mapping_structure_t& mapping_structure)
+    : size_(size),
+      chromosome_length_(chromosome_length),
+      mapping_structure_(mapping_structure),
+      data_(new T[size_]) {}
 
 template <typename T>
   requires std::totally_ordered<T>
@@ -20,8 +39,7 @@ ChromosomeArray<T>::~ChromosomeArray() {
 
 template <typename T>
   requires std::totally_ordered<T>
-ChromosomeArray<T>::ChromosomeArray(
-    const ChromosomeArray<T>& other) {
+ChromosomeArray<T>::ChromosomeArray(const ChromosomeArray<T>& other) {
   if (this != &other) {
     if (other.size_ > 0) {
       size_ = other.size_;
@@ -36,6 +54,7 @@ ChromosomeArray<T>::ChromosomeArray(
   }
   size_ = other.size_;
   chromosome_length_ = other.chromosome_length_;
+  mapping_structure_ = other.mapping_structure_;
 }
 
 template <typename T>
@@ -58,6 +77,7 @@ ChromosomeArray<T>& ChromosomeArray<T>::operator=(
     }
   }
   chromosome_length_ = other.chromosome_length_;
+  mapping_structure_ = other.mapping_structure_;
   return *this;
 }
 
@@ -156,4 +176,16 @@ template <typename T>
   requires std::totally_ordered<T>
 uint64_t ChromosomeArray<T>::chromosome_length() const {
   return chromosome_length_;
+}
+
+template <typename T>
+  requires std::totally_ordered<T>
+mapping_structure_t ChromosomeArray<T>::mapping_structure() const {
+  return mapping_structure_;
+}
+
+template <typename T>
+  requires std::totally_ordered<T>
+void ChromosomeArray<T>::SetMappingStructure(const mapping_structure_t& mapping_structure) {
+  mapping_structure_ = mapping_structure;
 }

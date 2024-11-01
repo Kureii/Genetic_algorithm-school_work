@@ -16,6 +16,5 @@ struct mapping_structure_t {
   double min_value;
   double max_value;
   int bits_per_variable;
+  int fractional_bits;
 };
-
-using mapping_structure_t = struct mapping_structure_t;
